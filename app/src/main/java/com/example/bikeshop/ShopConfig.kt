@@ -5,7 +5,9 @@ object ShopConfig {
     // اتركه فارغًا إلى أن يتم ضبط رقم المحل.
     const val WHATSAPP_NUMBER = ""
 
-    // Set this to an HTTPS catalog API endpoint before enabling cloud synchronization.
-    // The endpoint must return a JSON array; see README.md for the schema.
-    const val CATALOG_API_URL = ""
+    // Public Supabase Edge Function endpoint for the shared product catalog.
+    const val CATALOG_API_URL = "https://wccufalnjfmqxosjwoad.supabase.co/functions/v1/catalog"
+
+    // Publishable/anon key is intended for client apps; database access is protected by RLS.
+    const val SUPABASE_PUBLISHABLE_KEY = "sb_publishable_ZngaN5eMZ6qyYXytVKkcPg_KXwqbj86"
 }
