@@ -1,0 +1,4 @@
+project_id = "bike-shop-shared-catalog"
+
+[functions.catalog]
+verify_jwt = false
