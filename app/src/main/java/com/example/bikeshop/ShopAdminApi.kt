@@ -36,8 +36,9 @@ object ShopAdminApi {
             body = JSONObject().put("email", email.trim()).put("password", password),
             authenticated = false
         )
-        val token = response.optString("access_token")
-        val userId = response.optJSONObject("user")?.optString("id").orEmpty()
+        val authObject = response.optJSONObject(0) ?: error("استجابة تسجيل الدخول غير صالحة")
+        val token = authObject.optString("access_token")
+        val userId = authObject.optJSONObject("user")?.optString("id").orEmpty()
         if (token.isBlank() || userId.isBlank()) error("لم يُرجع الخادم جلسة دخول صالحة")
         val session = ShopAdminSession(token, userId)
         val admins = request(
