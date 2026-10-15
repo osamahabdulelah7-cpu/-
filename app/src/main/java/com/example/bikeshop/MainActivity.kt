@@ -128,6 +128,7 @@ private fun BicycleShopApp() {
                     "types" -> "أنواع الدراجات الهوائية"
                     "parts" -> "قطع الغيار"
                     "accessories" -> "اللوازم والزينة"
+                    "admin" -> "إدارة المتجر"
                     else -> "دراجتك"
                 },
                 showBack = page != "home",
@@ -139,7 +140,12 @@ private fun BicycleShopApp() {
                     Modifier.padding(padding),
                     syncMessage = syncMessage,
                     onParts = { page = "types" },
-                    onAccessories = { page = "accessories" }
+                    onAccessories = { page = "accessories" },
+                    onAdmin = { page = "admin" }
+                )
+                "admin" -> ShopAdminScreen(
+                    Modifier.padding(padding),
+                    onCatalogChanged = { syncCatalog() }
                 )
                 "types" -> CatalogScreen(
                     Modifier.padding(padding),
@@ -183,13 +189,16 @@ private fun TopAppBarBicycle(title: String, showBack: Boolean, onBack: () -> Uni
 }
 
 @Composable
-private fun HomeScreen(modifier: Modifier, syncMessage: String, onParts: () -> Unit, onAccessories: () -> Unit) {
+private fun HomeScreen(modifier: Modifier, syncMessage: String, onParts: () -> Unit, onAccessories: () -> Unit, onAdmin: () -> Unit) {
     Column(modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("مرحبًا بك في طبيب السياكل", fontSize = 23.sp, fontWeight = FontWeight.Bold, color = Navy)
         Text("دراجات هوائية وقطع غيار ولوازم متنوعة", color = Color.DarkGray)
         Text(syncMessage, color = Blue, fontSize = 12.sp)
         HomeTile("قطع غيار الدراجات الهوائية", "اختر الدراجات الكبيرة أو الصغيرة ثم تصفح القطع", "bicycle_large.svg", onParts)
         HomeTile("لوازم الدراجات الهوائية وزينتها", "خوذات وأضواء وأجراس وحقائب وإضافات", "accessories_helmet.svg", onAccessories)
+        OutlinedButton(onClick = onAdmin, modifier = Modifier.fillMaxWidth()) {
+            Text("إدارة المتجر (للمالك)")
+        }
         Spacer(Modifier.weight(1f))
         Text("الأسعار ستظهر بعد أن يضيفها صاحب المحل", color = Color.Gray, fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
     }
