@@ -2,6 +2,11 @@ package com.example.bikeshop
 
 import android.content.Intent
 import android.net.Uri
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,6 +22,11 @@ import androidx.compose.material.icons.filled.DirectionsBike
 import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -34,7 +44,7 @@ private val Navy = Color(0xFF102B46)
 private val Blue = Color(0xFF1677E8)
 private val Pale = Color(0xFFF3F7FB)
 
-data class ShopProduct(val name: String, val image: String, val section: String, val bikeType: String = "")
+data class ShopProduct(val name: String, val image: String, val section: String, val bikeType: String = "", val price: String = "")
 
 private val bikeTypes = listOf(
     ShopProduct("الدراجات الكبيرة", "bicycle_large.svg", "parts", "large"),
@@ -70,6 +80,46 @@ class MainActivity : ComponentActivity() {
 private fun BicycleShopApp() {
     var page by remember { mutableStateOf("home") }
     var selectedBike by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var syncedProducts by remember { mutableStateOf(ShopCatalogStore.load(context)) }
+    var syncMessage by remember { mutableStateOf("الكتالوج المحفوظ متاح دون إنترنت") }
+
+    fun syncCatalog() {
+        val endpoint = ShopConfig.CATALOG_API_URL
+        if (endpoint.isBlank()) {
+            syncMessage = "تعمل النسخة المحفوظة دون إنترنت؛ مزامنة السحابة تحتاج إعداد الخادم"
+            return
+        }
+        scope.launch {
+            val result = withContext(Dispatchers.IO) { ShopCatalogStore.fetchAndCache(context, endpoint) }
+            if (result != null) {
+                syncedProducts = result
+                syncMessage = "تم تحديث المنتجات"
+            } else {
+                syncMessage = "تعذر التحديث؛ ستُستخدم آخر نسخة محفوظة"
+                syncedProducts = ShopCatalogStore.load(context)
+            }
+        }
+    }
+
+    DisposableEffect(context) {
+        val manager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) { syncCatalog() }
+        }
+        val request = NetworkRequest.Builder().addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build()
+        try {
+            manager.registerNetworkCallback(request, callback)
+            if (manager.activeNetwork != null) syncCatalog()
+        } catch (_: Exception) { }
+        onDispose {
+            try { manager.unregisterNetworkCallback(callback) } catch (_: Exception) { }
+        }
+    }
+
+    val displayParts = syncedProducts?.filter { it.section == "parts" && it.bikeType.isBlank() } ?: parts
+    val displayAccessories = syncedProducts?.filter { it.section == "accessories" } ?: accessories
 
     MaterialTheme(colorScheme = lightColorScheme(primary = Blue, background = Pale)) {
         Scaffold(containerColor = Pale, topBar = {
@@ -87,6 +137,7 @@ private fun BicycleShopApp() {
             when (page) {
                 "home" -> HomeScreen(
                     Modifier.padding(padding),
+                    syncMessage = syncMessage,
                     onParts = { page = "types" },
                     onAccessories = { page = "accessories" }
                 )
@@ -100,7 +151,7 @@ private fun BicycleShopApp() {
                 "parts" -> CatalogScreen(
                     Modifier.padding(padding),
                     title = if (selectedBike == "small") "قطع غيار الدراجات الصغيرة" else "قطع غيار الدراجات الكبيرة",
-                    products = parts,
+                    products = displayParts,
                     onClick = {},
                     showOrder = true,
                     bikeLabel = if (selectedBike == "small") "دراجة صغيرة" else "دراجة كبيرة"
@@ -108,7 +159,7 @@ private fun BicycleShopApp() {
                 else -> CatalogScreen(
                     Modifier.padding(padding),
                     title = "كل ما يضاف للدراجة الهوائية",
-                    products = accessories,
+                    products = displayAccessories,
                     onClick = {},
                     showOrder = true
                 )
@@ -132,10 +183,11 @@ private fun TopAppBarBicycle(title: String, showBack: Boolean, onBack: () -> Uni
 }
 
 @Composable
-private fun HomeScreen(modifier: Modifier, onParts: () -> Unit, onAccessories: () -> Unit) {
+private fun HomeScreen(modifier: Modifier, syncMessage: String, onParts: () -> Unit, onAccessories: () -> Unit) {
     Column(modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("مرحبًا بك في طبيب السياكل", fontSize = 23.sp, fontWeight = FontWeight.Bold, color = Navy)
         Text("دراجات هوائية وقطع غيار ولوازم متنوعة", color = Color.DarkGray)
+        Text(syncMessage, color = Blue, fontSize = 12.sp)
         HomeTile("قطع غيار الدراجات الهوائية", "اختر الدراجات الكبيرة أو الصغيرة ثم تصفح القطع", "bicycle_large.svg", onParts)
         HomeTile("لوازم الدراجات الهوائية وزينتها", "خوذات وأضواء وأجراس وحقائب وإضافات", "accessories_helmet.svg", onAccessories)
         Spacer(Modifier.weight(1f))
@@ -185,8 +237,7 @@ private fun CatalogScreen(
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                             Text(product.name, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Navy)
                             if (showOrder) {
-                                Text("السعر: __________", color = Color.Gray, fontSize = 14.sp)
-                                Text("يحدده صاحب المحل", color = Color.Gray, fontSize = 12.sp)
+                                Text(if (product.price.isBlank()) "السعر: __________" else "السعر: ${product.price}", color = Color.Gray, fontSize = 14.sp)
                                 WhatsAppOrderButton(product.name, bikeLabel)
                             } else {
                                 Text("اضغط لعرض التفاصيل", color = Blue, fontSize = 13.sp)
@@ -209,7 +260,7 @@ private fun ProductImage(assetName: String, modifier: Modifier = Modifier) {
     }
     val request = remember(assetName) {
         ImageRequest.Builder(context)
-            .data("file:///android_asset/$assetName")
+            .data(if (assetName.startsWith("http://") || assetName.startsWith("https://")) assetName else "file:///android_asset/$assetName")
             .crossfade(true)
             .build()
     }
