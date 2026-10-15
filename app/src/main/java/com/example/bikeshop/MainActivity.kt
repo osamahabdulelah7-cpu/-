@@ -134,7 +134,7 @@ private fun TopAppBarBicycle(title: String, showBack: Boolean, onBack: () -> Uni
 @Composable
 private fun HomeScreen(modifier: Modifier, onParts: () -> Unit, onAccessories: () -> Unit) {
     Column(modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text("مرحبًا بك في متجر دراجتك", fontSize = 23.sp, fontWeight = FontWeight.Bold, color = Navy)
+        Text("مرحبًا بك في طبيب السياكل", fontSize = 23.sp, fontWeight = FontWeight.Bold, color = Navy)
         Text("دراجات هوائية وقطع غيار ولوازم متنوعة", color = Color.DarkGray)
         HomeTile("قطع غيار الدراجات الهوائية", "اختر الدراجات الكبيرة أو الصغيرة ثم تصفح القطع", "bicycle_large.svg", onParts)
         HomeTile("لوازم الدراجات الهوائية وزينتها", "خوذات وأضواء وأجراس وحقائب وإضافات", "accessories_helmet.svg", onAccessories)
