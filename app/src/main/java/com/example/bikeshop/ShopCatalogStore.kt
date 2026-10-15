@@ -8,10 +8,7 @@ import java.net.URL
 
 /**
  * Stores the last successful catalog response on this device.
- *
- * Configure CATALOG_API_URL to an HTTPS endpoint that returns a JSON array:
- * [{"name":"...","image":"https://... or asset.svg","section":"parts|accessories",
- *   "bikeType":"","price":"..."}]
+ * The cache remains available when the device is offline.
  */
 object ShopCatalogStore {
     private const val PREFS = "shop_catalog_cache"
@@ -35,24 +32,27 @@ object ShopCatalogStore {
                 connectTimeout = 8000
                 readTimeout = 8000
                 setRequestProperty("Accept", "application/json")
+                setRequestProperty("apikey", ShopConfig.SUPABASE_PUBLISHABLE_KEY)
             }
             if (connection.responseCode !in 200..299) return null
             val body = connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
             val parsed = parse(JSONArray(body))
+            // Never overwrite a previously good cache with an empty or invalid response.
             if (parsed.isEmpty()) return null
+            val serialized = JSONArray().apply {
+                parsed.forEach { product ->
+                    put(JSONObject().apply {
+                        put("name", product.name)
+                        put("image", product.image)
+                        put("section", product.section)
+                        put("bikeType", product.bikeType)
+                        put("price", product.price)
+                    })
+                }
+            }.toString()
             val saved = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .edit()
-                .putString(KEY_PRODUCTS, JSONArray().apply {
-                    parsed.forEach { product ->
-                        put(JSONObject().apply {
-                            put("name", product.name)
-                            put("image", product.image)
-                            put("section", product.section)
-                            put("bikeType", product.bikeType)
-                            put("price", product.price)
-                        })
-                    }
-                }.toString())
+                .putString(KEY_PRODUCTS, serialized)
                 .commit()
             if (saved) parsed else null
         } catch (_: Exception) {
