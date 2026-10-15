@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.ImageLoader
 import coil.compose.AsyncImage
 import coil.decode.SvgDecoder
 import coil.request.ImageRequest
@@ -201,15 +202,20 @@ private fun CatalogScreen(
 @Composable
 private fun ProductImage(assetName: String, modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    val imageLoader = remember {
+        ImageLoader.Builder(context)
+            .components { add(SvgDecoder.Factory()) }
+            .build()
+    }
     val request = remember(assetName) {
         ImageRequest.Builder(context)
             .data("file:///android_asset/$assetName")
-            .decoderFactory(SvgDecoder.Factory())
             .crossfade(true)
             .build()
     }
     AsyncImage(
         model = request,
+        imageLoader = imageLoader,
         contentDescription = null,
         modifier = modifier.background(Color(0xFFF7FAFD), RoundedCornerShape(12.dp))
     )
