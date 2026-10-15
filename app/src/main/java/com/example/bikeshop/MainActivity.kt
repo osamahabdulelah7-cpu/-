@@ -106,7 +106,7 @@ private fun BicycleShopApp() {
     DisposableEffect(context) {
         val manager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val callback = object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) { syncCatalog() }
+            override fun onAvailable(network: Network) { scope.launch(Dispatchers.Main) { syncCatalog() } }
         }
         val request = NetworkRequest.Builder().addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build()
         try {
@@ -118,7 +118,7 @@ private fun BicycleShopApp() {
         }
     }
 
-    val displayParts = syncedProducts?.filter { it.section == "parts" && it.bikeType.isBlank() } ?: parts
+    val displayParts = syncedProducts?.filter { it.section == "parts" && (it.bikeType.isBlank() || it.bikeType == selectedBike) } ?: parts
     val displayAccessories = syncedProducts?.filter { it.section == "accessories" } ?: accessories
 
     MaterialTheme(colorScheme = lightColorScheme(primary = Blue, background = Pale)) {
